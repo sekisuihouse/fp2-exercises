@@ -1,0 +1,302 @@
+第7回 — malloc でメモリを動的に確保する
+科目: 基礎プログラミングII　対象: 2年生　日付: 2026-05-25（月）
+
+
+タイムライン
+時間
+内容
+0:00〜15:00
+GitHub チーム開発の復習・チームリポジトリ作成
+15:00〜25:00
+malloc の説明
+25:00〜45:00
+学習ハーネスセッション
+45:00〜80:00
+演習（exercise07.c）＋ Pull Request・Merge
+80:00〜90:00
+理解度チェック・まとめ
+
+
+
+Step 1. GitHub チーム開発の復習（15分）
+第5回でやった Fork → Pull Request → Merge の流れを、今度はコードで実践する。
+今日のチーム開発フロー
+リーダーが fp2-exercises を Fork してチームのリポジトリを作る
+    ↓
+メンバー3人をコラボレーターとして招待
+    ↓
+全員が clone して 自分のブランチで演習コードを書く
+    ↓
+Pull Request を送る → リーダーがレビューして Merge
+
+
+Step 1-1. チームで役割を決める（1分）
+チームで1人 リーダー を決める。
+
+役割
+人数
+やること
+リーダー
+1名
+リポジトリを Fork してメンバーを招待する
+メンバー
+3名
+clone してブランチを作り、Pull Request を送る
+
+
+
+Step 1-2. リーダーの作業 — チームリポジトリを作る
+リーダーだけ 行う。
+
+① fp2-exercises を Fork する
+
+ブラウザで https://github.com/yamashu00/fp2-exercises を開く
+右上の Fork ボタンをクリック
+Owner が自分のアカウント名になっていることを確認して Create fork をクリック
+自分のアカウントに fp2-exercises がコピーされる（URL が github.com/自分の名前/fp2-exercises になればOK）
+
+② メンバーをコラボレーターとして招待する
+
+Fork したリポジトリのトップページを開く
+メニューバーにある Settings をクリックする
+左側のサイドバーから Collaborators を選択する
+Add people をクリックし、メンバーの GitHubユーザー名またはメールアドレス を入力して検索・選択する
+Add [ユーザー名] to this repository をクリックして招待を送信する
+メンバー3人分、8〜9を繰り返す
+
+招待を受け取ったメンバーへ: GitHub からメールが届くので承認する。または GitHub 右上のベルアイコン（通知）からも承認できる。承認しないとリポジトリに書き込めないので必ず行うこと。
+
+
+Step 1-3. メンバーの作業 — 招待を受け入れてクローンする
+メンバー3人 が行う。
+
+メールまたは GitHub の通知から招待を承認する
+リーダーのリポジトリURL（https://github.com/リーダーのユーザー名/fp2-exercises）をターミナルでクローンする
+
+git clone https://github.com/リーダーのユーザー名/fp2-exercises.git
+cd fp2-exercises
+
+# 自分の名前のブランチを作る（例: lesson-07-yamamoto）
+git checkout -b lesson-07-自分の名前
+
+リーダーも同じリポジトリでブランチを作って作業する。
+
+git clone https://github.com/自分のユーザー名/fp2-exercises.git
+cd fp2-exercises
+git checkout -b lesson-07-自分の名前
+
+ファイルを開く
+
+open　.
+
+
+Step 2. malloc の説明（15分）
+動的メモリ管理とは？
+みんなのカバンには、あらかじめ入れられるものの量が決まっていますよね。でも、もしカバンの中身を必要に応じて大きくしたり、小さくしたりできたら便利だと思いませんか？
+
+プログラムでも同じように、「あとから必要になった分だけメモリ（記憶領域）を使いたい」と思うことがあります。たとえば、ユーザーが何人いるかわからないチャットアプリや、リアルタイムでデータが増えていくゲームなどでは、最初から必要な量がわかりません。
+
+そんなときに使うのが、動的メモリ管理というテクニックです。
+malloc 関数とは
+読み方：「マロック」 または 「エムアロック」
+「memory（メモリ）」と「allocation（割り当て）」を組み合わせた名称
+
+m     alloc   →  malloc
+↑       ↑
+memory  allocation（割り当て）
+
+メモリ領域を動的に確保するときに使う
+成功時 → 確保したメモリの先頭アドレスが返る
+失敗時 → NULL が返る
+
+#include <stdlib.h>  // malloc, free を使うために必要
+
+void *malloc(size_t size);
+
+項目
+内容
+引数
+確保したいバイト数
+戻り値
+確保したメモリの先頭アドレス（失敗時は NULL）
+
+
+普通の配列との違い:
+
+
+
+配列 int arr[5]
+malloc
+サイズを決めるタイミング
+プログラムを書くとき
+実行中（動かしながら）
+サイズの変更
+できない
+できる（realloc）
+解放
+自動
+free() で手動
+
+
+
+第3回のスクーミーを思い出そう
+第3回で LED を光らせたとき、こんなコードを書いた：
+
+digitalWrite(10, HIGH);  // 10番ピンの LED を光らせる
+
+スクーミーには4つのポートがある（ピン番号: 10, 5, 15, 19）。
+
+問題: 「10番ピンを500ms、5番ピンを300ms、15番ピンを…」のように、何パターンも記録したいとき、プログラムを書く時点で何パターンになるかは決められない。
+配列では対応できない理由
+// パターン数が決まっているなら配列で書ける
+int pins[4] = {10, 5, 15, 19};
+
+// でも「何個になるか実行するまで分からない」場合は？
+int n;
+scanf("%d", &n);
+int pins[n];   // ← 処理系によって動いたり動かなかったりする（危険）
+malloc を使えば解決できる
+#include <stdlib.h>  // malloc, free を使うために必要
+
+int n;
+scanf("%d", &n);
+
+// n 個分のメモリを実行時に確保できる
+int *pins = malloc(n * sizeof(int));
+malloc の書き方
+型 *変数名 = malloc(個数 * sizeof(型));
+
+書く内容
+意味
+型 *変数名
+ポインタを宣言する
+個数 * sizeof(型)
+必要なバイト数を計算する
+
+必ずセットで書くこと
+// 確保
+LedPattern *patterns = malloc(n * sizeof(LedPattern));
+
+// ① NULL チェック（確保に失敗することがある）
+if (patterns == NULL) {
+    fprintf(stderr, "メモリ確保失敗\n");
+    return 1;
+}
+
+// ② 使い終わったら必ず解放
+free(patterns);
+patterns = NULL;
+
+
+Step 3. 学習ハーネスセッション（25分）
+操作手順
+3-1. Codespaces を開く
+
+GitHub で自分の my-study-harness（前回作成したやつ） リポジトリを開く
+緑の Code ボタン → Codespaces タブ → 前回作った Codespace を開く
+
+3-2. ハーネスをスタートする
+
+右側のチャットパネル（吹き出しアイコン）に入力：
+
+学習ハーネススタート
+
+テーマを伝える：
+
+mallocでメモリを動的に確保する仕組みを理解したい
+
+3-3. テストモードで今の理解を確認する
+
+テストモード
+
+→ AI から問題が出されるので、自分の言葉で答える。わからなくてOK。
+
+3-4. 解説モードで弱点を深める
+
+解説モード
+
+→ わからなかった部分を AI に深掘りしてもらう。
+
+3-5. ハーネスを終了する（必ず行うこと）
+
+学習ハーネス終了
+
+→ GitHub の Issues タブに学習記録が自動保存される。
+
+
+Step 4. 演習（30分）
+exercise07.c を完成させよう
+フォークしたリポジトリの lesson-07/exercise07.c を VS Code で開く。
+
+code lesson-07/exercise07.c
+
+/* ここを書く */ と書かれた5箇所を埋めて、プログラムを完成させよ。
+コンパイルと実行
+cd lesson-07
+gcc exercise07.c -o exercise07
+./exercise07
+実行例
+LED パターンを何個登録しますか？: 3
+パターン1 — ピン番号: 10
+パターン1 — 点灯時間(ms): 500
+パターン2 — ピン番号: 5
+パターン2 — 点灯時間(ms): 300
+パターン3 — ピン番号: 15
+パターン3 — 点灯時間(ms): 200
+
+--- 登録した LED シーケンス ---
+パターン1: ピン10を500ms点灯
+パターン2: ピン5を300ms点灯
+パターン3: ピン15を200ms点灯
+
+プログラム終了
+完成したら Pull Request で提出する
+Step 4-1. コードを push する
+
+git add lesson-07/exercise07.c
+git commit -m "lesson07: exercise07完成"
+git push origin lesson-07-自分の名前
+
+Step 4-2. Pull Request を送る（メンバー3名）
+
+GitHub でリーダーのリポジトリを開く
+Pull requests タブ → New pull request
+base: main ← compare: lesson-07-自分の名前 を選ぶ
+タイトル: lesson07: 山本の演習提出 のように書く
+Create pull request
+
+Step 4-3. Pull Request をレビューして Merge する（リーダー）
+
+Pull requests タブでメンバーの Pull Request を開く
+Files changed タブでコードを確認する
+気になる点があれば行を選んでコメントを書く
+問題なければ Merge pull request → Confirm merge
+
+
+Step 5. 理解度チェック（10分）
+Q1. malloc(3 * sizeof(int)) は何バイトのメモリを確保しますか？
+
+Q2. 次のコードの問題点を答えよ。
+
+int *arr = malloc(5 * sizeof(int));
+arr[0] = 10;
+free(arr);
+
+Q3. malloc が失敗したとき、返ってくる値は何ですか？
+
+Q4. 次のコードに何か足りないものはありますか？
+
+int n = 10;
+int *data = malloc(n * sizeof(int));
+data[0] = 100;
+// ...
+
+Q5.（発展） 構造体 LedPattern を3個分確保するコードを書け。
+
+
+まとめ
+malloc = 実行時にサイズを決めてメモリを確保する
+必ずセットで書く: NULL チェック ＋ free
+スクーミーで「何個記録するか分からない」データを扱うときに活きる
+次回: realloc — 確保したメモリをあとから広げる
+
